@@ -115,11 +115,15 @@ async def toggle_forwarding(interaction: discord.Interaction):
 
 @client.event
 async def on_message(message):
+    sent_in_game = False
     if message.author == client.user:
         content = message.content
-        if not content.contains('[Minecraft]'):
+        if not '[Minecraft]' in content:
             # this means it is just some random message from the bot
             return
+        # this means that the message is formatted as "[Minecraft] <player>: <message>"
+        # we don't want to broadcast this to the person that sent it originally
+        sent_in_game = True
     
     if message.channel.id in tracked_channels:
         # get usernames for all members
@@ -129,13 +133,22 @@ async def on_message(message):
 
         for member in message.channel.members:
             if str(member.id) in linked_accounts:
-                usernames.append(linked_accounts[str(member.id)])
+                usernames.append(linked_accounts[str(member.id)].lower())
         
+        # remove the username of the person that sent it if needed
+        if sent_in_game:
+            username = message.content.split('[Minecraft] ')[1].split(':')[0]
+            usernames.remove(username.lower())
+
         # now we need to send to the server somehow
         try:
             with MCRcon('localhost', 'hello123', port=25575) as mcr:
-                safe_content = message.content.replace('"', '\\"').replace("\n", ' ')
-                display_name = message.author.display_name.replace('"', '\\"')
+                if not sent_in_game:
+                    safe_content = message.content.replace('"', '\\"').replace("\n", ' ')
+                    display_name = message.author.display_name.replace('"', '\\"')
+                else:
+                    safe_content = message.content.split(': ')[1].replace('"', '\\"').replace("\n", ' ')
+                    display_name = message.content.split(': ')[0].split('[Minecraft] ')[1].replace('"', '\\"')
 
                 for username in usernames:
                     mcr.command(f'tellraw {username} {{"text": "[Discord] {display_name}: {safe_content}", "color": "blue"}}')
