@@ -36,12 +36,12 @@ def cache_channel_ids(server, channel_name):
         with open(f'{server.id}_channels.json', 'r') as f:
             channels = json.load(f)
             if channel_name in channels:
-                return channels[channel_name]
+                return channels[channel_name]['id']
 
         channel = discord.utils.get(server.channels, name=channel_name)
         if channel is None:
             return None
-        channels[channel_name] = channel.id
+        channels[channel_name] = {'id': channel.id}
         with open(f'{server.id}_channels.json', 'w') as f:
             json.dump(channels, f, indent=4)
 
@@ -51,7 +51,7 @@ def cache_channel_ids(server, channel_name):
         channel = discord.utils.get(server.channels, name=channel_name)
         if channel is None:
             return None
-        channels = {channel_name: channel.id}
+        channels = {channel_name: {'id': channel.id}}
         with open(f'{server.id}_channels.json', 'w') as f:
             json.dump(channels, f, indent=4)
 
@@ -91,7 +91,14 @@ async def on_ready():
 
 # command to link a discord account to a minecraft username
 @tree.command(name='link_account', description='Links your Discord account to your Minecraft account.')
+@app_commands.guild_only()
 async def link_account(interaction: discord.Interaction, username: str):
+    # limit to only text channels
+    channel = interaction.channel
+    if not isinstance(channel, discord.TextChannel):
+        await interaction.response.send_message('This command can only be used in text channels.', ephemeral=True)
+        return
+    
     discord_id = interaction.user.id
     with open('linked_accounts.json', 'r') as f:
         linked_accounts = json.load(f)
@@ -105,7 +112,14 @@ async def link_account(interaction: discord.Interaction, username: str):
 
 # toggle forwarding of discord messages to minecraft
 @tree.command(name='toggle_forwarding', description='Toggle forwarding all messages sent in this channel to Minecraft.')
+@app_commands.guild_only()
 async def toggle_forwarding(interaction: discord.Interaction):
+    # limit to only text channels
+    channel = interaction.channel
+    if not isinstance(channel, discord.TextChannel):
+        await interaction.response.send_message('This command can only be used in text channels.', ephemeral=True)
+        return
+    
     channel_id = interaction.channel_id
     if channel_id in tracked_channels:
         tracked_channels.remove(channel_id)
@@ -113,6 +127,85 @@ async def toggle_forwarding(interaction: discord.Interaction):
     else:
         tracked_channels.add(channel_id)
         await interaction.response.send_message('Message forwarding has been enabled for this channel.', ephemeral=False)
+
+
+@tree.command(name='exclude', description='Exclude a member in this channel from receiving forwarded messages.')
+@app_commands.guild_only()
+async def exclude(interaction: discord.Interaction, member: discord.Member):
+    # limit to only text channels
+    channel = interaction.channel
+    if not isinstance(channel, discord.TextChannel):
+        await interaction.response.send_message('This command can only be used in text channels.', ephemeral=True)
+        return
+    
+    exclude_id = member.id
+    channel_name = channel.name
+    server = interaction.guild
+    if server is None:
+        await interaction.response.send_message('Error: Could not find the server.', ephemeral=True)
+        return
+    
+    if Path(f'{server.id}_channels.json').exists():
+        with open(f'{server.id}_channels.json', 'r') as f:
+            channels = json.load(f)
+            if channel_name in channels:
+                if 'excluded' in channels[channel_name]:
+                    channels[channel_name]['excluded'].append(exclude_id)
+                else:
+                    channels[channel_name]['excluded'] = [exclude_id]
+                await interaction.response.send_message(f'{member.display_name} has been excluded from receiving forwarded messages in this channel.', ephemeral=False)
+                return
+            else:
+                channels[channel_name] = {'id': channel.id, 'excluded': [exclude_id]}
+                await interaction.response.send_message(f'{member.display_name} has been excluded from receiving forwarded messages in this channel.', ephemeral=False)
+                return
+    
+    else:
+        channels = {channel_name: {'id': channel.id, 'excluded': [exclude_id]}}
+        with open(f'{server.id}_channels.json', 'w') as f:
+            json.dump(channels, f, indent=4)
+
+        await interaction.response.send_message(f'{member.display_name} has been excluded from receiving forwarded messages in this channel.', ephemeral=False)
+        return
+    
+
+@tree.command(name='include', description='Include a member in this channel to receive forwarded messages.')
+@app_commands.guild_only()
+async def include(interaction: discord.Interaction, member: discord.Member):
+    # limit to only text channels
+    channel = interaction.channel
+    if not isinstance(channel, discord.TextChannel):
+        await interaction.response.send_message('This command can only be used in text channels.', ephemeral=True)
+        return
+
+    include_id = member.id
+    channel_name = channel.name
+    server = interaction.guild
+    if server is None:
+        await interaction.response.send_message('Error: Could not find the server.', ephemeral=True)
+        return
+
+    if Path(f'{server.id}_channels.json').exists():
+        with open(f'{server.id}_channels.json', 'r') as f:
+            channels = json.load(f)
+            if channel_name in channels:
+                if 'excluded' in channels[channel_name]:
+                    channels[channel_name]['excluded'].remove(include_id)
+                    await interaction.response.send_message(f'{member.display_name} has been included to receive forwarded messages in this channel.', ephemeral=False)
+                else:
+                    await interaction.response.send_message(f'{member.display_name} is already included to receive forwarded messages in this channel.', ephemeral=False)
+                return
+            else:
+                await interaction.response.send_message(f'Channel "{channel_name}" not found.', ephemeral=True)
+                return
+
+    else:
+        channels = {channel_name: {'id': channel.id}}
+        with open(f'{server.id}_channels.json', 'w') as f:
+            json.dump(channels, f, indent=4)
+
+        await interaction.response.send_message(f'{member.display_name} has been included to receive forwarded messages in this channel.', ephemeral=False)
+        return
 
 
 @client.event
@@ -133,8 +226,17 @@ async def on_message(message):
         with open('linked_accounts.json', 'r') as f:
             linked_accounts = json.load(f)
 
+        server = message.guild
+        channel = message.channel.name
+        with open(f'{server.id}_channels.json', 'r') as f:
+            channels = json.load(f)
+            if channel in channels and 'excluded' in channels[channel]:
+                excluded_ids = channels[channel]['excluded']
+            else:
+                excluded_ids = []
+
         for member in message.channel.members:
-            if str(member.id) in linked_accounts:
+            if str(member.id) in linked_accounts and str(member.id) not in excluded_ids:
                 usernames.append(linked_accounts[str(member.id)].lower())
         
         # remove the username of the person that sent it if needed
