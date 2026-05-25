@@ -23,6 +23,8 @@ GUILD_IDS_FILE = BASE_DIR / 'guild_ids.json'
 LINKED_ACCOUNTS_FILE = BASE_DIR / 'linked_accounts.json'
 ENV_FILE = BASE_DIR / '.env'
 
+load_dotenv(ENV_FILE)
+
 # helper functions to make sure files exist and to read/write json files
 def ensure_json_file(file_path: Path, default_value):
     if not file_path.exists():
@@ -360,7 +362,10 @@ async def on_message(message):
 
         # now we need to send to the server somehow
         try:
-            with MCRcon('localhost', 'hello123', port=25575) as mcr:
+            rcon_pwd = os.getenv("RCON_PASSWORD")
+            rcon_ip = os.getenv("RCON_IP", "localhost")
+            rcon_port = int(os.getenv("RCON_PORT", 25575))
+            with MCRcon(rcon_ip, rcon_pwd, port=rcon_port) as mcr:
                 if not sent_in_game:
                     safe_content = message.content.replace('"', '\\"').replace("\n", ' ')
                     display_name = message.author.display_name.replace('"', '\\"')
@@ -428,7 +433,6 @@ async def send_message_to_discord(request):
         )
     
 
-load_dotenv(ENV_FILE)
 token = os.getenv("DISCORD_TOKEN")
 if token is None:
     print("Error: DISCORD_TOKEN not found in environment variables.")
