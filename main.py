@@ -233,7 +233,12 @@ async def private_channel(interaction: discord.Interaction, channel_name: str, m
         member: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
     }
 
-    channel = await server.create_text_channel(channel_name, overwrites=overwrites)
+    category = discord.utils.get(
+        server.categories,
+        name="Private Channels"
+    )
+
+    channel = await server.create_text_channel(channel_name, overwrites=overwrites, category=category)
 
     await interaction.response.send_message(f'Private channel {channel.mention} has been created.', ephemeral=False)
 
