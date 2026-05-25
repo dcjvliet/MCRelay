@@ -2,6 +2,8 @@ import discord
 from discord import app_commands
 import json
 from pathlib import Path
+from dotenv import load_dotenv
+import os
 
 from mcrcon import MCRcon
 from aiohttp import web
@@ -211,4 +213,9 @@ async def send_message_to_discord(request):
         )
     
 
-client.run('YOUR_TOKEN_HERE')
+load_dotenv()
+token = os.getenv("DISCORD_TOKEN")
+if token is None:
+    print("Error: DISCORD_TOKEN not found in environment variables.")
+else:
+    client.run(token)
