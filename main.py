@@ -1,6 +1,7 @@
 import discord
 from discord import app_commands
 import json
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 import os
@@ -15,6 +16,35 @@ intents.members = True
 
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
+
+# stuff to make sure .exe works fine
+BASE_DIR = Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent
+GUILD_IDS_FILE = BASE_DIR / 'guild_ids.json'
+LINKED_ACCOUNTS_FILE = BASE_DIR / 'linked_accounts.json'
+ENV_FILE = BASE_DIR / '.env'
+
+# helper functions to make sure files exist and to read/write json files
+def ensure_json_file(file_path: Path, default_value):
+    if not file_path.exists():
+        with open(file_path, 'w') as f:
+            json.dump(default_value, f, indent=4)
+
+
+def read_json_file(file_path: Path, default_value):
+    if not file_path.exists():
+        return default_value
+
+    with open(file_path, 'r') as f:
+        return json.load(f)
+
+
+def write_json_file(file_path: Path, data):
+    with open(file_path, 'w') as f:
+        json.dump(data, f, indent=4)
+
+
+ensure_json_file(GUILD_IDS_FILE, {})
+ensure_json_file(LINKED_ACCOUNTS_FILE, {})
 
 # create list of tracked channels (unique across all servers)
 tracked_channels = set()
@@ -32,8 +62,10 @@ async def start_web_server():
 
 
 def cache_channel_ids(server, channel_name):
-    if Path(f'{server.id}_channels.json').exists():
-        with open(f'{server.id}_channels.json', 'r') as f:
+    channels_file = BASE_DIR / f'{server.id}_channels.json'
+
+    if channels_file.exists():
+        with open(channels_file, 'r') as f:
             channels = json.load(f)
             if channel_name in channels:
                 return channels[channel_name]['id']
@@ -42,8 +74,7 @@ def cache_channel_ids(server, channel_name):
         if channel is None:
             return None
         channels[channel_name] = {'id': channel.id}
-        with open(f'{server.id}_channels.json', 'w') as f:
-            json.dump(channels, f, indent=4)
+        write_json_file(channels_file, channels)
 
         return channel.id
     
@@ -52,24 +83,21 @@ def cache_channel_ids(server, channel_name):
         if channel is None:
             return None
         channels = {channel_name: {'id': channel.id}}
-        with open(f'{server.id}_channels.json', 'w') as f:
-            json.dump(channels, f, indent=4)
+        write_json_file(channels_file, channels)
 
         return channel.id
 
 
 def cache_guild_id(guild_name: str):
-    with open('guild_ids.json', 'r') as f:
-        guild_ids = json.load(f)
-        if guild_name in guild_ids:
-            return guild_ids[guild_name]
+    guild_ids = read_json_file(GUILD_IDS_FILE, {})
+    if guild_name in guild_ids:
+        return guild_ids[guild_name]
         
     guild = discord.utils.get(client.guilds, name=guild_name)
     if guild is None:
         return None
     guild_ids[guild_name] = guild.id
-    with open('guild_ids.json', 'w') as f:
-        json.dump(guild_ids, f, indent=4)
+    write_json_file(GUILD_IDS_FILE, guild_ids)
 
     return guild.id
 
@@ -100,12 +128,10 @@ async def link_account(interaction: discord.Interaction, username: str):
         return
     
     discord_id = interaction.user.id
-    with open('linked_accounts.json', 'r') as f:
-        linked_accounts = json.load(f)
+    linked_accounts = read_json_file(LINKED_ACCOUNTS_FILE, {})
     
     linked_accounts[str(discord_id)] = username
-    with open('linked_accounts.json', 'w') as f:
-        json.dump(linked_accounts, f, indent=4)
+    write_json_file(LINKED_ACCOUNTS_FILE, linked_accounts)
 
     await interaction.response.send_message(f'Your Discord account has been linked to the Minecraft account: {username}', ephemeral=True)
 
@@ -145,8 +171,10 @@ async def exclude(interaction: discord.Interaction, member: discord.Member):
         await interaction.response.send_message('Error: Could not find the server.', ephemeral=True)
         return
     
-    if Path(f'{server.id}_channels.json').exists():
-        with open(f'{server.id}_channels.json', 'r') as f:
+    channels_file = BASE_DIR / f'{server.id}_channels.json'
+
+    if channels_file.exists():
+        with open(channels_file, 'r') as f:
             channels = json.load(f)
             if channel_name in channels:
                 if 'excluded' in channels[channel_name]:
@@ -158,15 +186,13 @@ async def exclude(interaction: discord.Interaction, member: discord.Member):
                 channels[channel_name] = {'id': channel.id, 'excluded': [exclude_id]}
                 await interaction.response.send_message(f'{member.display_name} has been excluded from receiving forwarded messages in this channel.', ephemeral=False)
         
-        with open(f'{server.id}_channels.json', 'w') as f:
-            json.dump(channels, f, indent=4)
+        write_json_file(channels_file, channels)
 
         return
     
     else:
         channels = {channel_name: {'id': channel.id, 'excluded': [exclude_id]}}
-        with open(f'{server.id}_channels.json', 'w') as f:
-            json.dump(channels, f, indent=4)
+        write_json_file(channels_file, channels)
 
         await interaction.response.send_message(f'{member.display_name} has been excluded from receiving forwarded messages in this channel.', ephemeral=False)
         return
@@ -188,27 +214,28 @@ async def include(interaction: discord.Interaction, member: discord.Member):
         await interaction.response.send_message('Error: Could not find the server.', ephemeral=True)
         return
 
-    if Path(f'{server.id}_channels.json').exists():
-        with open(f'{server.id}_channels.json', 'r') as f:
+    channels_file = BASE_DIR / f'{server.id}_channels.json'
+
+    if channels_file.exists():
+        with open(channels_file, 'r') as f:
             channels = json.load(f)
             if channel_name in channels:
                 if 'excluded' in channels[channel_name]:
-                    channels[channel_name]['excluded'].remove(include_id)
+                    if include_id in channels[channel_name]['excluded']:
+                        channels[channel_name]['excluded'].remove(include_id)
                     await interaction.response.send_message(f'{member.display_name} has been included to receive forwarded messages in this channel.', ephemeral=False)
                 else:
                     await interaction.response.send_message(f'{member.display_name} is already included to receive forwarded messages in this channel.', ephemeral=False)
             else:
                 await interaction.response.send_message(f'Channel "{channel_name}" not found.', ephemeral=True)
 
-        with open(f'{server.id}_channels.json', 'w') as f:
-            json.dump(channels, f, indent=4)
+        write_json_file(channels_file, channels)
 
         return
 
     else:
         channels = {channel_name: {'id': channel.id}}
-        with open(f'{server.id}_channels.json', 'w') as f:
-            json.dump(channels, f, indent=4)
+        write_json_file(channels_file, channels)
 
         await interaction.response.send_message(f'{member.display_name} has been included to receive forwarded messages in this channel.', ephemeral=False)
         return
@@ -306,13 +333,14 @@ async def on_message(message):
     if message.channel.id in tracked_channels:
         # get usernames for all members
         usernames = []
-        with open('linked_accounts.json', 'r') as f:
-            linked_accounts = json.load(f)
+        linked_accounts = read_json_file(LINKED_ACCOUNTS_FILE, {})
 
         server = message.guild
         channel = message.channel.name
-        if Path(f'{server.id}_channels.json').exists():
-            with open(f'{server.id}_channels.json', 'r') as f:
+        channels_file = BASE_DIR / f'{server.id}_channels.json'
+
+        if channels_file.exists():
+            with open(channels_file, 'r') as f:
                 channels = json.load(f)
                 if channel in channels and 'excluded' in channels[channel]:
                     excluded_ids = channels[channel]['excluded']
@@ -377,12 +405,11 @@ async def send_message_to_discord(request):
         
         # get the linked account for the player
         linked_account = None
-        with open('linked_accounts.json', 'r') as f:
-            linked_accounts = json.load(f)
-            for discord_id, minecraft_username in linked_accounts.items():
-                if minecraft_username == player:
-                    linked_account = discord_id
-                    break
+        linked_accounts = read_json_file(LINKED_ACCOUNTS_FILE, {})
+        for discord_id, minecraft_username in linked_accounts.items():
+            if minecraft_username == player:
+                linked_account = discord_id
+                break
 
         if linked_account is None:
             return web.json_response({'status': 'error', 'message': f'No linked Discord account found for Minecraft username "{player}"'}, status=404)
@@ -401,7 +428,7 @@ async def send_message_to_discord(request):
         )
     
 
-load_dotenv()
+load_dotenv(ENV_FILE)
 token = os.getenv("DISCORD_TOKEN")
 if token is None:
     print("Error: DISCORD_TOKEN not found in environment variables.")
