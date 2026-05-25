@@ -256,11 +256,12 @@ async def add_member(interaction: discord.Interaction, channel: discord.TextChan
         await interaction.response.send_message('Error: Could not find the server.', ephemeral=True)
         return
 
-    overwrites = channel.overwrites
-    overwrites[member] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
-
-    await channel.edit(overwrites=overwrites)
-    await interaction.response.send_message(f'{member.display_name} has been added to {channel.mention}.', ephemeral=False)
+    await channel.set_permissions(
+        member,
+        view_channel=True,
+        send_messages=True,
+        read_message_history=True
+    )
 
 
 @tree.command(name='remove_member', description='Remove a member from a private channel created by the bot.')
@@ -276,12 +277,12 @@ async def remove_member(interaction: discord.Interaction, channel: discord.TextC
         await interaction.response.send_message('Error: Could not find the server.', ephemeral=True)
         return
 
-    overwrites = channel.overwrites
-    if member in overwrites:
-        del overwrites[member]
-
-    await channel.edit(overwrites=overwrites)
-    await interaction.response.send_message(f'{member.display_name} has been removed from {channel.mention}.', ephemeral=False)
+    await channel.set_permissions(
+        member,
+        view_channel=False,
+        send_messages=False,
+        read_message_history=False
+    )
 
 
 @client.event
