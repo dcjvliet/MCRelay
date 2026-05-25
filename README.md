@@ -1,14 +1,15 @@
+# Installation
+Go to the latest release and download the `discord_bot.exe` file. The bot will be online as long as this file is running.
+
 # Setup
-In order to run this Discord bot, you must first create a bot through the [Discord Developer Portal](https://discord.com/developers/applications). Follow the instructions there to create a bot, and copy its token. Then you will either need to put that token in the last line of the `main.py` file in place of "token", or create a `.env` file and add the token under the variable name `DISCORD_TOKEN`.
-This bot works in conjuction with the [MCRelay mod](https://github.com/dcjvliet/MCRelay-Mod). There are two ways to run this bot.
+### This bot works in conjuction with the [MCRelay mod](https://github.com/dcjvliet/MCRelay-Mod).
+In order to run this Discord bot, you must first create a bot through the [Discord Developer Portal](https://discord.com/developers/applications). Follow the instructions there to create a bot, and copy its token. 
 
-## Option 1: On the same server as the Minecraft server
-This is the easiest option. Simply install the python script and related `.json` files on the server, and run the main.py file. Then invite the bot to the Discord server, and it will work.
+In the same directory as the `discord_bot.exe` file, create a file named `.env` and paste the following line in: `DISCORD_TOKEN="YOUR TOKEN"`, replacing YOUR_TOKEN with the token you copied from the Discord Developer Portal.
 
-## Option 2: On a different server from the Minecraft server
-This requires a few code changes. On line 136, you must change `localhost` to the IP of the server the Minecraft server runs on.
+You must update your `server.properties` file in order for this mod and Discord bot to work. In the `server.properties` file, make sure `enable-rcon` is set to true, and then set the `rcon-password`. Optionally, set the `rcon-port`.
 
-No matter which option you choose, you must update your `server.properties` file and the RCon password in the code. In the `server.properties` file, make sure `enable-rcon` is set to true, and then set the `rcon-password`. This password must be entered in line 136 of `main.py`.
+In the same `.env` file paste the following line in: `RCON_PASSWORD="YOUR PASSWORD"`, replacing YOUR_PASSWORD with the password you set in the `server.properties` file. If you changed the port as well, create a variable in the `.env` file named `RCON_PORT`. This is not necessary if it is set to the default port. If you are running the Discord bot from a server different from the one the Minecraft server runs on, then create a varaible in the `.env` file named `RCON_IP` and set it to your Minecraft server's IP.
 
 When inviting the bot to your server, you must select the correct options when generating the OAuth URL in the Discord Developer Portal. The `bot` as well as `applications.commands` boxes must be checked. Within the bot permissions, it must be able to `Send Messages`, `Read Message History`, and `Manage Channels`. It is also essentialy that in the `Bot` tab on the left-hand side you give it `Server Memebers` and `Message Content` Intents.
 
