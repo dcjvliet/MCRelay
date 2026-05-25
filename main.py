@@ -214,6 +214,71 @@ async def include(interaction: discord.Interaction, member: discord.Member):
         return
 
 
+@tree.command(name='private_channel', description='Create a private channel only specified members can access.')
+@app_commands.guild_only()
+async def private_channel(interaction: discord.Interaction, channel_name: str, member: discord.Member):
+    # limit to only text channels
+    channel = interaction.channel
+    if not isinstance(channel, discord.TextChannel):
+        await interaction.response.send_message('This command can only be used in text channels.', ephemeral=True)
+        return
+    
+    server = interaction.guild
+    if server is None:
+        await interaction.response.send_message('Error: Could not find the server.', ephemeral=True)
+        return
+    
+    overwrites = {
+        server.default_role: discord.PermissionOverwrite(view_channel=False),
+        member: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
+    }
+
+    channel = await server.create_text_channel(channel_name, overwrites=overwrites)
+
+    await interaction.response.send_message(f'Private channel {channel.mention} has been created.', ephemeral=False)
+
+
+@tree.command(name='add_member', description='Add a member to a private channel created by the bot.')
+@app_commands.guild_only()
+async def add_member(interaction: discord.Interaction, channel: discord.TextChannel, member: discord.Member):
+    # limit to only text channels
+    if not isinstance(channel, discord.TextChannel):
+        await interaction.response.send_message('This command can only be used in text channels.', ephemeral=True)
+        return
+
+    server = interaction.guild
+    if server is None:
+        await interaction.response.send_message('Error: Could not find the server.', ephemeral=True)
+        return
+
+    overwrites = channel.overwrites
+    overwrites[member] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
+
+    await channel.edit(overwrites=overwrites)
+    await interaction.response.send_message(f'{member.display_name} has been added to {channel.mention}.', ephemeral=False)
+
+
+@tree.command(name='remove_member', description='Remove a member from a private channel created by the bot.')
+@app_commands.guild_only()
+async def remove_member(interaction: discord.Interaction, channel: discord.TextChannel, member: discord.Member):
+    # limit to only text channels
+    if not isinstance(channel, discord.TextChannel):
+        await interaction.response.send_message('This command can only be used in text channels.', ephemeral=True)
+        return
+
+    server = interaction.guild
+    if server is None:
+        await interaction.response.send_message('Error: Could not find the server.', ephemeral=True)
+        return
+
+    overwrites = channel.overwrites
+    if member in overwrites:
+        del overwrites[member]
+
+    await channel.edit(overwrites=overwrites)
+    await interaction.response.send_message(f'{member.display_name} has been removed from {channel.mention}.', ephemeral=False)
+
+
 @client.event
 async def on_message(message):
     sent_in_game = False
