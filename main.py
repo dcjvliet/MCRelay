@@ -228,12 +228,15 @@ async def on_message(message):
 
         server = message.guild
         channel = message.channel.name
-        with open(f'{server.id}_channels.json', 'r') as f:
-            channels = json.load(f)
-            if channel in channels and 'excluded' in channels[channel]:
-                excluded_ids = channels[channel]['excluded']
-            else:
-                excluded_ids = []
+        if Path(f'{server.id}_channels.json').exists():
+            with open(f'{server.id}_channels.json', 'r') as f:
+                channels = json.load(f)
+                if channel in channels and 'excluded' in channels[channel]:
+                    excluded_ids = channels[channel]['excluded']
+                else:
+                    excluded_ids = []
+        else:
+            excluded_ids = []
 
         for member in message.channel.members:
             if str(member.id) in linked_accounts and str(member.id) not in excluded_ids:
