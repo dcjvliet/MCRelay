@@ -263,6 +263,9 @@ async def add_member(interaction: discord.Interaction, channel: discord.TextChan
         read_message_history=True
     )
 
+    await interaction.response.send_message(f'{member.display_name} has been added to {channel.mention}.', ephemeral=False)
+    return
+
 
 @tree.command(name='remove_member', description='Remove a member from a private channel created by the bot.')
 @app_commands.guild_only()
@@ -283,6 +286,9 @@ async def remove_member(interaction: discord.Interaction, channel: discord.TextC
         send_messages=False,
         read_message_history=False
     )
+
+    await interaction.response.send_message(f'{member.display_name} has been added to {channel.mention}.', ephemeral=False)
+    return
 
 
 @client.event
