@@ -1,5 +1,5 @@
 # Setup
-In order to run this Discord bot, you must first create a bot through the [Discord Developer Portal](https://discord.com/developers/applications). Follow the instructions there to create a bot, and copy its token. Then you will need to put that token in the last line of the `main.py` file.
+In order to run this Discord bot, you must first create a bot through the [Discord Developer Portal](https://discord.com/developers/applications). Follow the instructions there to create a bot, and copy its token. Then you will either need to put that token in the last line of the `main.py` file in place of "token", or create a `.env` file and add the token under the variable name `DISCORD_TOKEN`.
 This bot works in conjuction with the [MCRelay mod](https://github.com/dcjvliet/MCRelay-Mod). There are two ways to run this bot.
 
 ## Option 1: On the same server as the Minecraft server
@@ -10,9 +10,16 @@ This requires a few code changes. On line 136, you must change `localhost` to th
 
 No matter which option you choose, you must update your `server.properties` file and the RCon password in the code. In the `server.properties` file, make sure `enable-rcon` is set to true, and then set the `rcon-password`. This password must be entered in line 136 of `main.py`.
 
-When inviting the bot to your server, you must select the correct options when generating the OAuth URL in the Discord Developer Portal. The `bot` as well as `applications.commands` boxes must be checked. Within the bot permissions, it must be able to `send_messages` and `read_message_history`. It is also essentialy that in the `Bot` tab on the left-hand side you give it `Server Memebers` and `Message Content` Intents.
+When inviting the bot to your server, you must select the correct options when generating the OAuth URL in the Discord Developer Portal. The `bot` as well as `applications.commands` boxes must be checked. Within the bot permissions, it must be able to `Send Messages`, `Read Message History`, and `Manage Channels`. It is also essentialy that in the `Bot` tab on the left-hand side you give it `Server Memebers` and `Message Content` Intents.
 
 # Usage
-The first step is to link your Minecraft account with your Discord account. Run the command `/link_accoutn <Minecraft username>` in a channel that the bot has access to to link the accounts. Note that this does not actually perform any authentication, so it is easily exploitable.
-Next, in order for Discord messages to be sent to the Minecraft server, you must run the command `/toggle_forwarding`. This will begin forwarding **all messages sent in the channel to all members who have access to that channel** on the Minecraft server. It will only send the message in Minecraft if their account is linked.
-Run `/toggle_forwarding` again to disable forwarding messages.
+The bot comes with a few commands. In order to use most of them, you must link your Minecraft and Discord accounts using the `/link_account` command.
+
+- `/link_account <username>`: Links your Discord account to the given Minecraft username. _This does not actually verify with Microsoft, so this works on the honor system._
+- `/toggle_forwarding`: Toggles forwarding of messages in the channel to Minecraft.
+- `/exclude <member>`: Exclude a member in a channel from receiving forwarded messages.
+- `/include <member>`: Include a member (in a channel or not) from receiving forwarded messages.
+- `/private_channel <channel_name> <member>`: Create a private channel with the given name that only the given member (and server administrators) can access. _This does not require the member to have permission to create text channels._
+- `/add_member <channeL> <member>`: Give the member access to the given channel. _This does not require the member to have permission to edit member access._
+- `/remove_member <channel> <member>`: Remove access from the member to the given channel. _This does not require the member to have permission to edit member access._
+  
