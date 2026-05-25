@@ -154,11 +154,14 @@ async def exclude(interaction: discord.Interaction, member: discord.Member):
                 else:
                     channels[channel_name]['excluded'] = [exclude_id]
                 await interaction.response.send_message(f'{member.display_name} has been excluded from receiving forwarded messages in this channel.', ephemeral=False)
-                return
             else:
                 channels[channel_name] = {'id': channel.id, 'excluded': [exclude_id]}
                 await interaction.response.send_message(f'{member.display_name} has been excluded from receiving forwarded messages in this channel.', ephemeral=False)
-                return
+        
+        with open(f'{server.id}_channels.json', 'w') as f:
+            json.dump(channels, f, indent=4)
+
+        return
     
     else:
         channels = {channel_name: {'id': channel.id, 'excluded': [exclude_id]}}
@@ -194,10 +197,13 @@ async def include(interaction: discord.Interaction, member: discord.Member):
                     await interaction.response.send_message(f'{member.display_name} has been included to receive forwarded messages in this channel.', ephemeral=False)
                 else:
                     await interaction.response.send_message(f'{member.display_name} is already included to receive forwarded messages in this channel.', ephemeral=False)
-                return
             else:
                 await interaction.response.send_message(f'Channel "{channel_name}" not found.', ephemeral=True)
-                return
+
+        with open(f'{server.id}_channels.json', 'w') as f:
+            json.dump(channels, f, indent=4)
+
+        return
 
     else:
         channels = {channel_name: {'id': channel.id}}
