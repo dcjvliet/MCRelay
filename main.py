@@ -54,6 +54,7 @@ tracked_channels = set()
 async def start_web_server():
     app = web.Application()
     app.router.add_post('/send_message', send_message_to_discord)
+    app.router.add_get('/get_user_data', get_user_discord_data)
     runner = web.AppRunner(app)
 
     await runner.setup()
@@ -431,7 +432,51 @@ async def send_message_to_discord(request):
             },
             status=500
         )
-    
+
+
+# now we need to implement the method to allow Minecraft to get a users servers/channels
+async def get_user_discord_data(request):
+    try:
+        username = request.query.get('username', None)
+        if username is None:
+            return web.json_response({'status': 'error', 'message': 'username is required'}, status=400)
+        
+        # now we need to do a reverse lookup to get the discord id from the username
+        linked_accounts = read_json_file(LINKED_ACCOUNTS_FILE, {})
+        discord_id = None
+        for id, mc_username in linked_accounts.items():
+            if mc_username == username:
+                discord_id = id
+                break
+
+        if discord_id is None:
+            return web.json_response({'status': 'error', 'message': f'No linked Discord account found for Minecraft username "{username}"'}, status=404)
+        
+        servers_data = []
+        for guild in client.guilds:
+            member = guild.get_member(int(discord_id))
+            if member is None:
+                continue
+
+            channels_data = []
+            for channel in guild.text_channels:
+                permissions = channel.permissions_for(member)
+                if permissions.view_channel and permissions.send_messages:
+                    channels_data.append(channel.name)
+
+            if channels_data:
+                servers_data.append({'name': guild.name, 'channels': channels_data})
+        
+        return web.json_response({'status': 'ok', 'guilds': servers_data}, status=200)
+    except Exception as e:
+        print(e)
+        return web.json_response(
+            {
+                "status": "error",
+                "message": str(e)
+            },
+            status=500
+        )
 
 token = os.getenv("DISCORD_TOKEN")
 if token is None:
