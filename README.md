@@ -1,5 +1,5 @@
 # Installation
-Go to the latest release and download the `discord_bot.exe` file. The bot will be online as long as this file is running.
+Go to the latest release and download the `discord_bot.exe` (or `discord_bot-ELF` if on Linux) file. The bot will be online as long as this file is running.
 
 # Setup
 ### This bot works in conjuction with the [MCRelay mod](https://github.com/dcjvliet/MCRelay-Mod).
