@@ -467,7 +467,7 @@ async def get_user_discord_data(request):
             if channels_data:
                 servers_data.append({'name': guild.name, 'channels': channels_data})
         
-        return web.json_response({'status': 'ok', 'guilds': servers_data}, status=200)
+        return web.json_response({'status': 'ok', 'guilds': servers_data, 'id': discord_id}, status=200)
     except Exception as e:
         print(e)
         return web.json_response(
