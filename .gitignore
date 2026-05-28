@@ -4,3 +4,4 @@ venv/
 discord_bot-ELF
 build/
 dist/
+*.spec

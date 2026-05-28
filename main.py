@@ -367,11 +367,23 @@ async def on_message(message):
             rcon_ip = os.getenv("RCON_IP", "localhost")
             rcon_port = int(os.getenv("RCON_PORT", 25575))
             with MCRcon(rcon_ip, rcon_pwd, port=rcon_port) as mcr:
+                # we want to change mentions to show the display name instead of the id
+                words = message.content.split()
+                for i, word in enumerate(words):
+                    if word.startswith('<@') and word.endswith('>'):
+                        discord_id = word[2:-1]
+                        if discord_id.startswith('!'):
+                            discord_id = discord_id[1:]
+                        member = message.guild.get_member(int(discord_id))
+                        if member is not None:
+                            words[i] = f'@{member.display_name}'
+                
+                new_content = ' '.join(words)
                 if not sent_in_game:
-                    safe_content = message.content.replace('"', '\\"').replace("\n", ' ')
+                    safe_content = new_content.replace('"', '\\"').replace("\n", ' ')
                     display_name = message.author.display_name.replace('"', '\\"')
                 else:
-                    safe_content = message.content.split(': ')[1].replace('"', '\\"').replace("\n", ' ')
+                    safe_content = new_content.split(': ')[1].replace('"', '\\"').replace("\n", ' ')
                     display_name = message.content.split(': ')[0].split('[Minecraft] ')[1].replace('"', '\\"')
 
                 for username in usernames:
