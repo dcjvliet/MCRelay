@@ -420,6 +420,24 @@ async def send_message_to_discord(request):
         if linked_account is None:
             return web.json_response({'status': 'error', 'message': f'No linked Discord account found for Minecraft username "{player}"'}, status=404)
 
+        # we want to edit the message to include mentions
+        # first we want to find every instance of "@username"
+        words = message.split()
+        for i, word in enumerate(words):
+            if word.startswith('@'):
+                username = word[1:]
+                # now we want to find the discord id for this username
+                discord_id = None
+                for id, mc_username in linked_accounts.items():
+                    if mc_username == username:
+                        discord_id = id
+                        break
+                
+                if discord_id is not None:
+                    # replace the word with a mention
+                    words[i] = f'<@{discord_id}>'
+        message = ' '.join(words)
+
         client.loop.create_task(discord_channel.send(f'**[Minecraft]** {player}: {message}')) # type: ignore
 
         return web.json_response({'status': 'ok'}, status=200)
@@ -467,7 +485,7 @@ async def get_user_discord_data(request):
             if channels_data:
                 servers_data.append({'name': guild.name, 'channels': channels_data})
         
-        return web.json_response({'status': 'ok', 'guilds': servers_data, 'id': discord_id, 'display_name': linked_accounts.get(discord_id, '$')}, status=200)
+        return web.json_response({'status': 'ok', 'guilds': servers_data}, status=200)
     except Exception as e:
         print(e)
         return web.json_response(
